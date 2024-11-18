@@ -1,0 +1,38 @@
+alias: Laden - Load balancing
+description: "Deze automatisering controleert of je teveel stroom verbruikt op je meter en schakeltde laadpaal af indien nodig"
+mode: single
+triggers:
+  - seconds: "30"
+    trigger: time_pattern
+conditions:
+  - condition: state
+    entity_id: sensor.laadpaal
+    state: Charging Normal
+actions:
+  - if:
+      - condition: numeric_state
+        entity_id: sensor.max_stroom_op_fase
+        above: 23
+    then:
+      - target:
+          entity_id: number.laadpaal_max_station_current
+        data:
+          value: "{{ states('number.laadpaal_max_station_current') | int - 2 }}"
+        alias: verlaag met 1 ampere
+        action: number.set_value
+    else:
+      - condition: numeric_state
+        entity_id: sensor.max_stroom_op_fase
+        below: 20
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: number.laadpaal_max_station_current
+            state: "16"
+        alias: Test charge rate is not already at the 16 amp maximum
+      - target:
+          entity_id: number.laadpaal_max_station_current
+        data:
+          value: "{{ states('number.laadpaal_max_station_current') | int + 1 }}"
+        alias: Increase charging rate by 1 amp
+        action: number.set_value
