@@ -84,8 +84,10 @@ actions:
       seconds: 1
       milliseconds: 0
   - variables:
-      kwhladen: "{{ 60 * (0.01 * states('sensor.tesla_battery_level') | int) }}"
-      tijdladen: "{{ ((60 - kwhladen) / 11) | int }}"
+      autocapacity: 60
+      chargercapacity: 11
+      kwhladen: "{{ autocapacity * (0.01 * states('sensor.tesla_battery_level') | int) }}"
+      tijdladen: "{{ ((autocapacity - kwhladen) / chargercapacity) | int }}"
       tijdladenafgerond: "{{ ((tijdladen + 1) | round(0, 'ceil', default)) | int }}"
     alias: Bereken het aantal uur dat er nodig is om te laden
   - variables:
