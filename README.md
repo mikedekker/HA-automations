@@ -34,7 +34,7 @@ minimumlengte: 0
 maximumlengte: 254
 
 **sensor.max_stroom_op_fase**
-Dit is een sensor template. Het volgende sjabloon dient te worden toegepast
+Dit is een sensor template. Het volgende sjabloon dient te worden toegepast. Pas de sensors aan naar je eigen sensors die het aantal Ampere aangeven op je meter.
 ```
 {% set fase_l1 = states('sensor.electricity_meter_stroom_fase_l1') | int %}
 {% set fase_l2 = states('sensor.electricity_meter_stroom_fase_l2') | int %}
