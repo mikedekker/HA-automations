@@ -145,7 +145,7 @@ actions:
               value: "16"
             target:
               entity_id: number.laadpaal_max_station_current
-          - action: notify.mobile_app_iphone_van_mike_nieuw
+          - action: notify.mobile_app_iphone
             metadata: {}
             data:
               message: De auto gaat nu laden omdat dit uur goedkoop is.
@@ -157,7 +157,7 @@ actions:
           value: "0"
         target:
           entity_id: number.laadpaal_max_station_current
-      - action: notify.mobile_app_iphone_van_mike_nieuw
+      - action: notify.mobile_app_iphone
         metadata: {}
         data:
           message: De auto gaat nog niet laden en wacht tot een goedkoop moment.
