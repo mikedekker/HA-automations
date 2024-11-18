@@ -1,0 +1,48 @@
+alias: Laden - Periodieke controle
+description: "Deze automatisering start op elke eerste minuut van een nieuw uur en bepaalt of er geladen moet worden of niet"
+triggers:
+  - trigger: time_pattern
+    minutes: "0"
+conditions:
+  - condition: or
+    conditions:
+      - condition: state
+        entity_id: sensor.laadpaal
+        state: Charging Normal
+      - condition: state
+        entity_id: sensor.laadpaal
+        state: Wait Vehicle Charging
+      - condition: state
+        entity_id: sensor.laadpaal
+        state: Load Balancing Forced Off
+actions:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: >-
+              {% for item in states('input_text.goedkopelaadtijden') | from_json
+              %}
+                {% if item.hour == now().hour %}
+                  {{ True }}
+                {% endif %}
+              {% endfor %}
+        sequence:
+          - target:
+              entity_id: number.laadpaal_max_station_current
+            data:
+              value: "16"
+            alias: Activeer laden
+            action: number.set_value
+          - action: notify.mobile_app_iphone
+            metadata: {}
+            data:
+              message: De auto gaat nu laden omdat dit uur goedkoop is.
+              title: Auto laden
+    default:
+      - alias: Laden stoppen
+        target:
+          entity_id: number.laadpaal_max_station_current
+        data:
+          value: "0"
+        action: number.set_value
+mode: single
