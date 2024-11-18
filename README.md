@@ -1,4 +1,4 @@
-Dit is een automatisering voor het laden van een elektrische auto aangestuurd door Home Assistant.
+Dit is een automatisering voor het laden van een elektrische auto aangestuurd door Home Assistant. Op deze manier kan je op goedkope momenten laden en ook zit er een load balancing automation bij.
 
 De automatisering "Laden - Start bepalen" zorgt er voor dat er bij het aansluiten van je auto op de kabel de vraag op je mobiel komt hoe je wil laden. Wil je dit zo snel mogelijk, voor 6 uur de volgende ochtend of binnen 24 uur?
 De automatisering zorgt er voor dat er op de goedkoopste tijden geladen zal worden.
@@ -14,6 +14,9 @@ Een voorbeeld van wat er gebeurt.
 
 Nadat het eerste initiele stuk is afgelopen dient er ook een automatisering te zijn die elk uur kijkt of de laadpaal in- of uitgeschakeld moet worden. Dit doe je met de automatisering "Laden - Periodieke controle".
 Deze automatisering controleert elk uur of het een goedkoop uur is en schakelt hier de laadpaal op.
+
+### Load balancing
+Met de automatisering "Laden - Load balancing" kan Home Assistant aan de hand van de gegevens uit je slimme meter bepalen of het laden langzamer of sneller moet. In sommige gevallen kan je licenties bij de laadpaal hier voor kopen maar als je dit niet wil kan je deze automation gebruiken.
 
 ## Welke integraties zijn er gebruikt:
 **Tesla** Om de batterij percentage van de auto uit lezen
