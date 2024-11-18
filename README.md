@@ -22,6 +22,8 @@ Deze automatisering controleert elk uur of het een goedkoop uur is en schakelt h
 
 **Nordpol** Voor het ophalen van de actuele stroomprijzen van een dynamisch contract
 
+**DSMR Smart Meter** Of andere integratie om je meter uit te lezen
+
 ## Welke helpers moet je aanmaken?
 **input_number.laden_klaar**
 minimumwaarde: -1
@@ -30,6 +32,16 @@ maximumwaarde: 23
 **input_text.goedkopelaadtijden**
 minimumlengte: 0
 maximumlengte: 254
+
+**sensor.max_stroom_op_fase**
+Dit is een sensor template. Het volgende sjabloon dient te worden toegepast
+```
+{% set fase_l1 = states('sensor.electricity_meter_stroom_fase_l1') | int %}
+{% set fase_l2 = states('sensor.electricity_meter_stroom_fase_l2') | int %}
+{% set fase_l3 = states('sensor.electricity_meter_stroom_fase_l3') | int %}
+{% set max_fase = [fase_l1, fase_l2, fase_l3] | max %}
+{{ max_fase }}
+```
 
 ## Wat moet je persoonlijk aanpassen in de automatisering?
 **sensor.laadpaal**
