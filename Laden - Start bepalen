@@ -1,0 +1,164 @@
+alias: Laden - Start bepalen
+description: "Als de laadkabel aangesloten is dan zal met deze automation gevraagd worden hoe je wil laden. Hierna zal het laden wel of niet gestart worden afhankelijk van de goedkope uren"
+triggers:
+  - trigger: state
+    entity_id:
+      - sensor.laadpaal
+    from: Available
+    to: null
+conditions: []
+actions:
+  - alias: Variabelen aanmaken voor de keuzemogelijkheden
+    variables:
+      action_fast: "{{ 'FAST' }}"
+      action_work: "{{ 'WORK' }}"
+      action_cheap: "{{ 'CHEAP' }}"
+  - alias: Vraag hoe de auto geladen moet worden
+    action: notify.mobile_app_iphone
+    data:
+      message: De auto gaat laden. Hoe wil je de auto laden?
+      data:
+        actions:
+          - action: "{{ action_fast }}"
+            title: Zo snel mogelijk
+          - action: "{{ action_work }}"
+            title: Voor 6 uur
+          - action: "{{ action_cheap }}"
+            title: Binnen 24 uur
+  - alias: Wacht op antwoord vanuit de melding hoe de auto geladen moet worden
+    wait_for_trigger:
+      - event_type: mobile_app_notification_action
+        event_data:
+          action: "{{ action_fast }}"
+        trigger: event
+      - event_type: mobile_app_notification_action
+        event_data:
+          action: "{{ action_work }}"
+        trigger: event
+      - event_type: mobile_app_notification_action
+        event_data:
+          action: "{{ action_cheap }}"
+        trigger: event
+    timeout:
+      hours: 0
+      minutes: 5
+      seconds: 0
+      milliseconds: 0
+  - alias: De helper instellen wanneer het laden klaar moet zijn
+    choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ wait.trigger.event.data.action == action_work }}"
+        sequence:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.laden_klaar
+            data:
+              value: 6
+        alias: Deze actie zal worden uitgevoerd als er voor 6 uur gekozen is
+      - conditions:
+          - condition: template
+            value_template: "{{ wait.trigger.event.data.action == action_cheap }}"
+        sequence:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.laden_klaar
+            data:
+              value: "{{ now().hour }}"
+        alias: Deze actie zal worden uitgevoerd als er binnen 24 uur gekozen is
+      - conditions:
+          - condition: template
+            value_template: "{{ wait.trigger.event.data.action == action_fast }}"
+        sequence:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.laden_klaar
+            data:
+              value: -1
+        alias: >-
+          Deze actie zal worden uitgevoerd als er voor zo snel mogelijk gekozen
+          is
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - variables:
+      kwhladen: "{{ 60 * (0.01 * states('sensor.tesla_battery_level') | int) }}"
+      tijdladen: "{{ ((60 - kwhladen) / 11) | int }}"
+      tijdladenafgerond: "{{ ((tijdladen + 1) | round(0, 'ceil', default)) | int }}"
+    alias: Bereken het aantal uur dat er nodig is om te laden
+  - variables:
+      prices_today: "{{ state_attr('sensor.nordpool_kwh_nl_eur_2_11_031', 'today') }}"
+      prices_today_ns: |
+        {% set nstoday = namespace(items=[]) %}
+        {% for price in prices_today %}
+          {% set nstoday.items = nstoday.items + [{'hour': loop.index0, 'price': price}] %}
+        {% endfor %}
+        {% if states('input_number.laden_klaar') == '-1.0' %}
+          {% set endtime = (now().hour + tijdladenafgerond) | int %}
+          {{ nstoday.items | sort(attribute='price') | selectattr('hour','>=', now().hour) | selectattr('hour', '<', endtime) | list }}
+        {% else %}
+          {{ (nstoday.items | sort(attribute='price') | selectattr('hour', '>=', now().hour) | list)[:tijdladenafgerond] }}
+        {% endif %}
+      prices_tomorrow: "{{ state_attr('sensor.nordpool_kwh_nl_eur_2_11_031', 'tomorrow') }}"
+      prices_tomorrow_ns: |
+        {% set nstomorrow = namespace(items=[]) %}
+        {% for price in prices_tomorrow %}
+          {% set nstomorrow.items = nstomorrow.items + [{'hour': loop.index0, 'price': price}] %}
+        {% endfor %}
+        {% if (now().hour + tijdladenafgerond) > 24 %}
+          {% set asap_resthours = 24 - (now().hour + tijdladenafgerond) %}
+          {{ nstomorrow.items | sort(attribute='price') | selectattr('hour', '<', asap_resthours | int) | list }}
+        {% else %}
+          {{ (nstomorrow.items | sort(attribute='price') | selectattr('hour', '<', states('input_number.laden_klaar') | int) | list)[:tijdladenafgerond] }}
+        {% endif %}
+      combined_prices: "{{ (prices_today_ns + prices_tomorrow_ns) | sort(attribute='price') }}"
+    alias: Maakt een lijst met de goedkoopste uren om te laden
+  - target:
+      entity_id: input_text.goedkopelaadtijden
+    data:
+      value: "{{ combined_prices[:tijdladenafgerond] | tojson}}"
+    action: input_text.set_value
+    alias: Plaatst de goedkope uren in een helper
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 2
+      milliseconds: 0
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: >-
+              {% for item in states('input_text.goedkopelaadtijden') | from_json
+              %}
+                {% if item.hour == now().hour %}
+                  {{ True }}
+                {% endif %}
+              {% endfor %}
+        sequence:
+          - action: number.set_value
+            metadata: {}
+            data:
+              value: "16"
+            target:
+              entity_id: number.laadpaal_max_station_current
+          - action: notify.mobile_app_iphone_van_mike_nieuw
+            metadata: {}
+            data:
+              message: De auto gaat nu laden omdat dit uur goedkoop is.
+              title: Auto laden
+    default:
+      - action: number.set_value
+        metadata: {}
+        data:
+          value: "0"
+        target:
+          entity_id: number.laadpaal_max_station_current
+      - action: notify.mobile_app_iphone_van_mike_nieuw
+        metadata: {}
+        data:
+          message: De auto gaat nog niet laden en wacht tot een goedkoop moment.
+          title: Auto laden
+    alias: Activeer het laden als het nu een goedkoop uur is.
+mode: single
